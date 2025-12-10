@@ -1,1 +1,1 @@
-"""Configuration package for RAG system."""
+"""Configuration package for RiffRag."""

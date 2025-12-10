@@ -1,6 +1,9 @@
-# Codebase RAG System
+# RiffRag: A local RAG builder with a Claude Code skills creator
 
-A Python-based Retrieval-Augmented Generation (RAG) system for indexing and querying codebases using LanceDB and Ollama embeddings. Designed for integration with Claude Code skills to save tokens and costs.
+This project provides an easy way to build and query a Retrieval-Augmented Generation (RAG) system for your codebases using LanceDB and Ollama embeddings. It is optimized for use with Claude Code skills to help you save tokens and reduce costs when querying large codebases. **RiffRag** helps you understand large codebases by creating searchable vector embeddings locally, with tight Claude Code integration for token-efficient development.
+
+## Why RiffRag?
+There are probably a million RAG tools out there, but I found that they all were hard to get started with, required cloud services, or were too expensive to use regularly. I also just wanted to play with this to understand better. It's probably a bit opinionated and suited to my own workflow, but maybe it helps you too!
 
 ## Features
 
@@ -10,19 +13,22 @@ A Python-based Retrieval-Augmented Generation (RAG) system for indexing and quer
 - **Smart filtering**: Respects .gitignore and common exclusion patterns
 - **Multiple codebases**: Separate database per codebase for clean isolation
 - **Claude Code skills**: Generate skills for token-efficient querying
-- **Rich CLI**: Beautiful command-line interface with progress tracking
+- **Rich CLI**: A rather pretty command-line interface with progress tracking
 
 ## Requirements
 
-- Python 3.9+
-- [Ollama](https://ollama.ai/) installed and running
+- Python 3.9+ (I just used the vanilla version installed on macOS – I did nothing to set that up)
+- [Ollama](https://ollama.ai/) installed and running. `brew install ollama` or download from their site.
 - mxbai-embed-large model pulled: `ollama pull mxbai-embed-large`
+- [Gum](https://github.com/charmbracelet/gum) for a more glamorous CLI experience: `brew install gum`
+- [Just](https://github.com/casey/just) task runner. Like `make` but it doesn't suck: `brew install just`
 
 ## Installation
 
-1. Clone or navigate to this repository:
+1. Clone this repository:
 ```bash
-cd /Users/ckj/Code/ai/rags
+git clone <repository-url>
+cd riffrag
 ```
 
 2. Create a virtual environment:

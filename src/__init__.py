@@ -1,1 +1,1 @@
-"""RAG system source code."""
+"""RiffRag - RAG system source code."""

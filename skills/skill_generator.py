@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate Claude Code skills for RAG databases."""
+"""RiffRag - Generate Claude Code skills for RAG databases."""
 
 import logging
 import sys

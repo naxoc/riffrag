@@ -1,4 +1,4 @@
-# RAG System - Just Recipes
+# RiffRag - Just Recipes
 # https://github.com/casey/just
 # Run 'just' to see all available recipes
 
@@ -81,9 +81,9 @@ clean:
 # Useful for verifying the system is working
 test:
     @echo "Testing by indexing this project..."
-    just update rags-project .
+    just update riffrag-project .
     @echo "\nQuerying the test database..."
-    just query rags-project "indexing pipeline" --limit 2
+    just query riffrag-project "indexing pipeline" --limit 2
 
 # Check if Ollama is running and has the required model
 # Verifies that mxbai-embed-large is available

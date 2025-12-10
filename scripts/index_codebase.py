@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CLI script to index a codebase into RAG database."""
+"""RiffRag - CLI script to index a codebase into RAG database."""
 
 import logging
 import sys

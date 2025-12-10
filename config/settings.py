@@ -1,4 +1,4 @@
-"""Configuration settings for RAG system using Pydantic."""
+"""Configuration settings for RiffRag using Pydantic."""
 
 from pathlib import Path
 from typing import List
