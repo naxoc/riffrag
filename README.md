@@ -3,7 +3,7 @@
 This project provides an easy way to build and query a Retrieval-Augmented Generation (RAG) system for your codebases using LanceDB and Ollama embeddings. It is optimized for use with Claude Code skills to help you save tokens and reduce costs when querying large codebases. **RiffRag** helps you understand large codebases by creating searchable vector embeddings locally, with tight Claude Code integration for token-efficient development.
 
 ## Why RiffRag?
-There are probably a million RAG tools out there, but I found that they all were hard to get started with, required cloud services, or were too expensive to use regularly. I also just wanted to play with this to understand better. It's probably a bit opinionated and suited to my own workflow, but maybe it helps you too!
+There are probably a million RAG tools out there, but I found that they all were hard to get started with, required cloud services, or were too expensive to use regularly. I also just wanted to play with this to understand better. It's probably a bit opinionated and suited to my own workflow, but maybe it helps you too! I should add that this is all mostly written by Claude Code. I'm really not a Python dev, so if you find issues, please open an issue or PR!
 
 ## Features
 
@@ -27,7 +27,7 @@ There are probably a million RAG tools out there, but I found that they all were
 
 1. Clone this repository:
 ```bash
-git clone <repository-url>
+git clone https://github.com/naxoc/riffrag.git
 cd riffrag
 ```
 
@@ -90,11 +90,20 @@ just query my-project "your question" --limit 10 --format claude --min-similarit
 - `--extension`: Filter by file extension (e.g., '.py')
 
 #### Generate Claude Code Skill
+This creates a Claude Code skill that you can use with `@skill-name` in your Claude Code sessions.
+
 ```bash
 just skill my-project
+```
 
-# With custom name:
-just skill my-project --skill-name custom-rag --description "My custom RAG"
+This will interactively prompt you (using `gum`) for:
+- **Skill name** (default: `my-project-rag`)
+- **Description** (default: "Query the my-project codebase")
+
+After creation, use it in Claude Code:
+```
+@my-project-rag How does authentication work?
+@my-project-rag Find all API endpoints
 ```
 
 #### Other Useful Commands
