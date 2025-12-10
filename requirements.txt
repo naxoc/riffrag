@@ -1,0 +1,25 @@
+# Core dependencies
+lancedb>=0.11.0
+ollama>=0.4.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+
+# File handling
+pathspec>=0.11.0          # For .gitignore parsing
+chardet>=5.0.0            # For encoding detection
+
+# CLI and UI
+python-dotenv>=1.0.0
+rich>=13.0.0              # Beautiful CLI output
+typer>=0.9.0              # CLI interface
+tqdm>=4.66.0              # Progress bars
+
+# Data processing
+numpy>=1.24.0
+pandas>=2.0.0              # For data analysis
+pyarrow>=14.0.0            # Required by LanceDB
+
+# Testing (optional)
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
