@@ -40,11 +40,23 @@ update NAME PATH *ARGS:
 query NAME QUERY *ARGS:
     ./venv/bin/python3 scripts/query_rag.py --database "{{NAME}}" --query "{{QUERY}}" {{ARGS}}
 
-# Generate a Claude Code skill for a RAG database
-# Usage: just skill my-project [--skill-name custom-name --description "Custom description"]
+# Generate a Claude Code skill for a RAG database (interactive with gum)
+# Usage: just skill my-project
+# Prompts for skill name and description interactively
 # After generation, use in Claude Code: @my-project-rag your question here
-skill NAME *ARGS:
-    ./venv/bin/python3 -m skills.skill_generator create --database "{{NAME}}" {{ARGS}}
+skill NAME:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Creating Claude Code skill for database: {{NAME}}"
+    echo ""
+    SKILL_NAME=$(gum input --placeholder "Skill name" --value "{{NAME}}-rag" --prompt "Skill name: ")
+    DESCRIPTION=$(gum input --placeholder "Description of this RAG" --value "Query the {{NAME}} codebase" --prompt "Description: " --width 100)
+    echo ""
+    echo "Creating skill '$SKILL_NAME'..."
+    ./venv/bin/python3 -m skills.skill_generator \
+        --database "{{NAME}}" \
+        --skill-name "$SKILL_NAME" \
+        --description "$DESCRIPTION"
 
 # List all RAG databases with statistics
 # Shows database names, file counts, and file extensions

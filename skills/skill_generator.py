@@ -49,8 +49,8 @@ def generate_skill(
     skill_dir = output_dir / skill_name
     skill_dir.mkdir(parents=True, exist_ok=True)
 
-    # Create skill.md file
-    skill_file = skill_dir / "skill.md"
+    # Create SKILL.md file (uppercase as required by Claude Code)
+    skill_file = skill_dir / "SKILL.md"
 
     skill_content = f'''---
 name: {skill_name}
@@ -74,54 +74,10 @@ Results include the most relevant files with similarity scores.
 
 ---
 
-```python
-#!/usr/bin/env python3
-"""Claude Code skill for querying {database_name} RAG."""
-
-import sys
-from pathlib import Path
-
-# Add RAG project to path
-sys.path.insert(0, str(Path("{project_root}")))
-
-from src.querying.query_engine import QueryEngine
-
-def main():
-    # Get query from command line arguments
-    query = " ".join(sys.argv[1:])
-
-    if not query:
-        print("Error: Please provide a query")
-        print("Usage: @{skill_name} <your question>")
-        sys.exit(1)
-
-    try:
-        # Query the RAG database
-        engine = QueryEngine(database_name="{database_name}")
-
-        results = engine.query(
-            query_text=query,
-            limit=5,
-            format_style="claude"
-        )
-
-        if not results:
-            print(f"No results found for: {{query}}")
-            print("\\nTry:")
-            print("  • A more general query")
-            print("  • Different keywords")
-            sys.exit(0)
-
-        # Format results for Claude
-        output = engine.format_results(results, style="claude")
-        print(output)
-
-    except Exception as e:
-        print(f"Error querying RAG: {{e}}")
-        sys.exit(1)
-
-if __name__ == "__main__":
-    main()
+```bash
+#!/usr/bin/env bash
+cd {project_root}
+just query {database_name} "$*" --limit 5 --format claude
 ```
 '''
 
