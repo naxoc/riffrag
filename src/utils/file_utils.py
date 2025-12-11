@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import List, Optional, Set
+from typing import Optional
 
 import pathspec
 
@@ -14,11 +14,7 @@ logger = logging.getLogger(__name__)
 class FileFilter:
     """Filter files based on patterns and .gitignore."""
 
-    def __init__(
-        self,
-        codebase_root: Path,
-        additional_patterns: Optional[List[str]] = None
-    ):
+    def __init__(self, codebase_root: Path, additional_patterns: Optional[list[str]] = None):
         """Initialize file filter.
 
         Args:
@@ -45,16 +41,13 @@ class FileFilter:
             return None
 
         try:
-            with open(gitignore_path, 'r', encoding='utf-8') as f:
+            with open(gitignore_path, encoding="utf-8") as f:
                 patterns = f.read().splitlines()
 
             # Remove comments and empty lines
-            patterns = [
-                p.strip() for p in patterns
-                if p.strip() and not p.strip().startswith('#')
-            ]
+            patterns = [p.strip() for p in patterns if p.strip() and not p.strip().startswith("#")]
 
-            spec = pathspec.PathSpec.from_lines('gitwildmatch', patterns)
+            spec = pathspec.PathSpec.from_lines("gitwildmatch", patterns)
             logger.info(f"Loaded {len(patterns)} patterns from .gitignore")
             return spec
 
@@ -62,7 +55,7 @@ class FileFilter:
             logger.warning(f"Error loading .gitignore: {e}")
             return None
 
-    def _matches_pattern(self, file_path: Path, patterns: List[str]) -> bool:
+    def _matches_pattern(self, file_path: Path, patterns: list[str]) -> bool:
         """Check if file matches any pattern.
 
         Args:
@@ -74,7 +67,7 @@ class FileFilter:
         """
         try:
             # Create PathSpec from patterns
-            spec = pathspec.PathSpec.from_lines('gitwildmatch', patterns)
+            spec = pathspec.PathSpec.from_lines("gitwildmatch", patterns)
 
             # Get relative path
             try:
@@ -122,7 +115,7 @@ class FileFilter:
 
         return False
 
-    def walk_files(self, show_progress: bool = False) -> List[Path]:
+    def walk_files(self, show_progress: bool = False) -> list[Path]:
         """Walk directory and return filtered file paths.
 
         Args:
@@ -136,7 +129,7 @@ class FileFilter:
         if show_progress:
             logger.info(f"Scanning {self.codebase_root}...")
 
-        for path in self.codebase_root.rglob('*'):
+        for path in self.codebase_root.rglob("*"):
             # Skip directories
             if not path.is_file():
                 continue
@@ -152,9 +145,8 @@ class FileFilter:
 
 
 def get_all_files(
-    codebase_path: Path,
-    additional_exclude: Optional[List[str]] = None
-) -> List[Path]:
+    codebase_path: Path, additional_exclude: Optional[list[str]] = None
+) -> list[Path]:
     """Get all files from codebase with filtering.
 
     Args:
@@ -168,7 +160,7 @@ def get_all_files(
     return file_filter.walk_files()
 
 
-def count_files_by_extension(files: List[Path]) -> dict:
+def count_files_by_extension(files: list[Path]) -> dict:
     """Count files by extension.
 
     Args:
@@ -179,7 +171,7 @@ def count_files_by_extension(files: List[Path]) -> dict:
     """
     counts = {}
     for file in files:
-        ext = file.suffix or 'no_extension'
+        ext = file.suffix or "no_extension"
         counts[ext] = counts.get(ext, 0) + 1
 
     return counts

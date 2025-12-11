@@ -5,7 +5,7 @@ import logging
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import lancedb
 import pyarrow as pa
@@ -39,11 +39,11 @@ class LanceDBStore:
             Sanitized name safe for filesystem
         """
         # Replace spaces and special chars with underscores
-        sanitized = re.sub(r'[^\w\-]', '_', name.lower())
+        sanitized = re.sub(r"[^\w\-]", "_", name.lower())
         # Remove multiple underscores
-        sanitized = re.sub(r'_+', '_', sanitized)
+        sanitized = re.sub(r"_+", "_", sanitized)
         # Remove leading/trailing underscores
-        sanitized = sanitized.strip('_')
+        sanitized = sanitized.strip("_")
         return sanitized
 
     def _get_table_name(self, codebase_name: str) -> str:
@@ -71,11 +71,7 @@ class LanceDBStore:
         content = f"{codebase_name}:{file_path}"
         return hashlib.sha256(content.encode()).hexdigest()[:16]
 
-    def create_table(
-        self,
-        codebase_name: str,
-        embedding_dim: int = None
-    ) -> str:
+    def create_table(self, codebase_name: str, embedding_dim: int = None) -> str:
         """Create a new table for a codebase.
 
         Args:
@@ -94,18 +90,24 @@ class LanceDBStore:
             return table_name
 
         # Create schema
-        schema = pa.schema([
-            pa.field("id", pa.string()),
-            pa.field("codebase_name", pa.string()),
-            pa.field("file_path", pa.string()),
-            pa.field("absolute_path", pa.string()),
-            pa.field("content", pa.string()),
-            pa.field("extension", pa.string()),
-            pa.field("size_bytes", pa.int64()),
-            pa.field("modified_at", pa.string()),
-            pa.field("language", pa.string()),
-            pa.field("vector", pa.list_(pa.float32(), dim)),
-        ])
+        schema = pa.schema(
+            [
+                pa.field("id", pa.string()),
+                pa.field("codebase_name", pa.string()),
+                pa.field("file_path", pa.string()),
+                pa.field("absolute_path", pa.string()),
+                pa.field("content", pa.string()),
+                pa.field("extension", pa.string()),
+                pa.field("size_bytes", pa.int64()),
+                pa.field("modified_at", pa.string()),
+                pa.field("language", pa.string()),
+                pa.field("start_line", pa.int32()),
+                pa.field("end_line", pa.int32()),
+                pa.field("chunk_index", pa.int32()),
+                pa.field("total_chunks", pa.int32()),
+                pa.field("vector", pa.list_(pa.float32(), dim)),
+            ]
+        )
 
         # Create empty table
         self.db.create_table(table_name, schema=schema)
@@ -113,11 +115,7 @@ class LanceDBStore:
 
         return table_name
 
-    def insert_chunks(
-        self,
-        codebase_name: str,
-        chunks: List[Dict[str, Any]]
-    ) -> int:
+    def insert_chunks(self, codebase_name: str, chunks: list[dict[str, Any]]) -> int:
         """Insert chunks into the database.
 
         Args:
@@ -143,22 +141,26 @@ class LanceDBStore:
         data = []
         for chunk in chunks:
             # Generate ID if not present
-            chunk_id = chunk.get("id") or self._generate_id(
-                codebase_name, chunk["file_path"]
-            )
+            chunk_id = chunk.get("id") or self._generate_id(codebase_name, chunk["file_path"])
 
-            data.append({
-                "id": chunk_id,
-                "codebase_name": codebase_name,
-                "file_path": chunk["file_path"],
-                "absolute_path": chunk.get("absolute_path", ""),
-                "content": chunk.get("content", ""),
-                "extension": chunk.get("extension", ""),
-                "size_bytes": chunk.get("size_bytes", 0),
-                "modified_at": chunk.get("modified_at", datetime.now().isoformat()),
-                "language": chunk.get("language", ""),
-                "vector": chunk["embedding"],
-            })
+            data.append(
+                {
+                    "id": chunk_id,
+                    "codebase_name": codebase_name,
+                    "file_path": chunk["file_path"],
+                    "absolute_path": chunk.get("absolute_path", ""),
+                    "content": chunk.get("content", ""),
+                    "extension": chunk.get("extension", ""),
+                    "size_bytes": chunk.get("size_bytes", 0),
+                    "modified_at": chunk.get("modified_at", datetime.now().isoformat()),
+                    "language": chunk.get("language", ""),
+                    "start_line": chunk.get("start_line", 1),
+                    "end_line": chunk.get("end_line", 1),
+                    "chunk_index": chunk.get("chunk_index", 0),
+                    "total_chunks": chunk.get("total_chunks", 1),
+                    "vector": chunk["embedding"],
+                }
+            )
 
         # Insert data
         table.add(data)
@@ -169,10 +171,10 @@ class LanceDBStore:
     def search(
         self,
         codebase_name: str,
-        query_embedding: List[float],
+        query_embedding: list[float],
         limit: int = None,
-        filters: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        filters: Optional[str] = None,
+    ) -> list[dict[str, Any]]:
         """Search for similar chunks.
 
         Args:
@@ -208,18 +210,24 @@ class LanceDBStore:
             distance = result.get("_distance", 0)
             similarity = 1 / (1 + distance)  # Convert distance to similarity
 
-            output.append({
-                "id": result["id"],
-                "file_path": result["file_path"],
-                "absolute_path": result.get("absolute_path", ""),
-                "content": result["content"],
-                "extension": result["extension"],
-                "size_bytes": result["size_bytes"],
-                "modified_at": result.get("modified_at", ""),
-                "language": result.get("language", ""),
-                "similarity": similarity,
-                "distance": distance,
-            })
+            output.append(
+                {
+                    "id": result["id"],
+                    "file_path": result["file_path"],
+                    "absolute_path": result.get("absolute_path", ""),
+                    "content": result["content"],
+                    "extension": result["extension"],
+                    "size_bytes": result["size_bytes"],
+                    "modified_at": result.get("modified_at", ""),
+                    "language": result.get("language", ""),
+                    "start_line": result.get("start_line", 1),
+                    "end_line": result.get("end_line", 1),
+                    "chunk_index": result.get("chunk_index", 0),
+                    "total_chunks": result.get("total_chunks", 1),
+                    "similarity": similarity,
+                    "distance": distance,
+                }
+            )
 
         return output
 
@@ -242,7 +250,7 @@ class LanceDBStore:
         logger.info(f"Deleted table '{table_name}'")
         return True
 
-    def list_tables(self) -> List[str]:
+    def list_tables(self) -> list[str]:
         """List all codebase tables.
 
         Returns:
@@ -250,12 +258,10 @@ class LanceDBStore:
         """
         tables = self.db.table_names()
         # Remove _rag suffix to get codebase names
-        codebases = [
-            t.replace("_rag", "") for t in tables if t.endswith("_rag")
-        ]
+        codebases = [t.replace("_rag", "") for t in tables if t.endswith("_rag")]
         return codebases
 
-    def get_stats(self, codebase_name: str) -> Optional[Dict[str, Any]]:
+    def get_stats(self, codebase_name: str) -> Optional[dict[str, Any]]:
         """Get statistics for a codebase.
 
         Args:

@@ -21,9 +21,7 @@ from src.storage.lancedb_store import LanceDBStore
 
 # Setup logging
 logging.basicConfig(
-    level=settings.log_level,
-    format="%(message)s",
-    handlers=[RichHandler(rich_tracebacks=True)]
+    level=settings.log_level, format="%(message)s", handlers=[RichHandler(rich_tracebacks=True)]
 )
 logger = logging.getLogger(__name__)
 
@@ -52,10 +50,10 @@ def main(
         help=f"Maximum number of results (default: {settings.default_search_limit})",
     ),
     format_style: str = typer.Option(
-        "plain",
+        "human",
         "--format",
         "-f",
-        help="Output format: 'plain' or 'claude'",
+        help="Output format: 'human' (colorful) or 'machine' (structured)",
     ),
     extension: Optional[str] = typer.Option(
         None,
@@ -81,7 +79,7 @@ def main(
             --database my-project \\
             --query "How is authentication implemented?" \\
             --limit 5 \\
-            --format claude
+            --format machine
     """
     # Handle list databases
     if list_databases:
@@ -92,11 +90,13 @@ def main(
             console.print("[yellow]No databases found[/yellow]")
             return
 
-        console.print(Panel.fit(
-            "[bold cyan]Available Databases[/bold cyan]\n\n" +
-            "\n".join(f"  • {db}" for db in databases),
-            border_style="cyan"
-        ))
+        console.print(
+            Panel.fit(
+                "[bold cyan]Available Databases[/bold cyan]\n\n"
+                + "\n".join(f"  • {db}" for db in databases),
+                border_style="cyan",
+            )
+        )
 
         # Show stats for each database
         console.print("\n[bold]Database Statistics:[/bold]\n")
@@ -125,18 +125,20 @@ def main(
     if not store.table_exists(database):
         console.print(f"[bold red]Error:[/bold red] Database '{database}' does not exist")
         console.print(f"\nAvailable databases: {store.list_tables()}")
-        console.print(f"\nRun with --list to see all databases")
+        console.print("\nRun with --list to see all databases")
         sys.exit(1)
 
     # Display query info
-    console.print(Panel.fit(
-        f"[bold cyan]Querying RAG Database[/bold cyan]\n\n"
-        f"[yellow]Database:[/yellow] {database}\n"
-        f"[yellow]Query:[/yellow] {query}\n"
-        f"[yellow]Limit:[/yellow] {limit or settings.default_search_limit}\n"
-        f"[yellow]Format:[/yellow] {format_style}",
-        border_style="cyan"
-    ))
+    console.print(
+        Panel.fit(
+            f"[bold cyan]Querying RAG Database[/bold cyan]\n\n"
+            f"[yellow]Database:[/yellow] {database}\n"
+            f"[yellow]Query:[/yellow] {query}\n"
+            f"[yellow]Limit:[/yellow] {limit or settings.default_search_limit}\n"
+            f"[yellow]Format:[/yellow] {format_style}",
+            border_style="cyan",
+        )
+    )
 
     # Run query
     try:
@@ -162,8 +164,8 @@ def main(
         formatted = engine.format_results(results, style=format_style)
 
         console.print("\n")
-        if format_style == "claude":
-            # Render as markdown for claude format
+        if format_style == "machine":
+            # Render as markdown for machine format
             console.print(Markdown(formatted))
         else:
             console.print(formatted)

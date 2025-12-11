@@ -52,7 +52,7 @@ def generate_skill(
     # Create SKILL.md file (uppercase as required by Claude Code)
     skill_file = skill_dir / "SKILL.md"
 
-    skill_content = f'''---
+    skill_content = f"""---
 name: {skill_name}
 description: {description}
 ---
@@ -65,24 +65,24 @@ Query the {database_name} codebase to find relevant code and documentation.
 - Get context about how features work
 
 **Examples:**
-- "How is authentication implemented?"
-- "Where is the database configured?"
-- "Find all API endpoints"
+- "How does logging work?"
+- "Where are error handlers defined?"
+- "Find configuration files"
 
 **Note:** This skill uses RAG (Retrieval-Augmented Generation) to search {database_name}.
-Results include the most relevant files with similarity scores.
+Results include relevant code chunks with line numbers and similarity scores.
 
 ---
 
 ```bash
 #!/usr/bin/env bash
 cd {project_root}
-just query {database_name} "$*" --limit 3 --format claude
+just query {database_name} "$*" --limit {settings.default_search_limit} --format machine
 ```
-'''
+"""
 
     # Write skill file
-    with open(skill_file, 'w', encoding='utf-8') as f:
+    with open(skill_file, "w", encoding="utf-8") as f:
         f.write(skill_content)
 
     logger.info(f"Created skill at: {skill_file}")
@@ -130,7 +130,9 @@ def create(
         if not databases:
             console.print("[yellow]No databases found[/yellow]")
             console.print("\nCreate a database first:")
-            console.print("  python scripts/index_codebase.py --path /path/to/code --name my-project")
+            console.print(
+                "  python scripts/index_codebase.py --path /path/to/code --name my-project"
+            )
             return
 
         console.print("[bold cyan]Available Databases:[/bold cyan]\n")
@@ -159,14 +161,16 @@ def create(
         )
 
         console.print(f"\n[green]✓[/green] Skill created at: [bold]{skill_dir}[/bold]")
-        console.print(f"\n[bold cyan]Usage in Claude Code:[/bold cyan]")
+        console.print("\n[bold cyan]Usage in Claude Code:[/bold cyan]")
 
         skill_name = skill_name or f"{database}-rag"
         console.print(f"  @{skill_name} How does authentication work?")
         console.print(f"  @{skill_name} Find all API endpoints")
         console.print(f"  @{skill_name} Where is the database configured?")
 
-        console.print(f"\n[yellow]Note:[/yellow] Restart Claude Code if it's already running to load the new skill")
+        console.print(
+            "\n[yellow]Note:[/yellow] Restart Claude Code if it's already running to load the new skill"
+        )
 
     except Exception as e:
         console.print(f"[bold red]Error:[/bold red] {e}")

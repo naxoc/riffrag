@@ -3,7 +3,7 @@
 import logging
 import time
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 from tqdm import tqdm
 
@@ -23,7 +23,7 @@ class CodebaseIndexer:
         self,
         codebase_path: Path,
         codebase_name: str,
-        additional_exclude: Optional[List[str]] = None,
+        additional_exclude: Optional[list[str]] = None,
         max_file_size: Optional[int] = None,
         batch_size: Optional[int] = None,
     ):
@@ -43,8 +43,10 @@ class CodebaseIndexer:
 
         # Initialize components
         self.file_filter = FileFilter(self.codebase_path, self.additional_exclude)
-        self.file_chunker = FileChunker(max_file_size)
-        self.embedder = OllamaEmbedder()
+        self.embedder = OllamaEmbedder()  # Create embedder first to get context_length
+        self.file_chunker = FileChunker(
+            max_file_size, max_chunk_tokens=self.embedder.context_length
+        )
         self.store = LanceDBStore()
 
         # Statistics
@@ -87,7 +89,7 @@ class CodebaseIndexer:
 
         # Step 2: Create table
         logger.info("Step 2: Creating/verifying database table...")
-        self.store.create_table(self.codebase_name)
+        self.store.create_table(self.codebase_name, embedding_dim=self.embedder.dimension)
 
         # Step 3: Process files in batches
         logger.info(f"Step 3: Processing files in batches of {self.batch_size}...")
@@ -110,7 +112,7 @@ class CodebaseIndexer:
 
         return self.stats
 
-    def _process_files_in_batches(self, files: List[Path], show_progress: bool):
+    def _process_files_in_batches(self, files: list[Path], show_progress: bool):
         """Process files in batches.
 
         Args:
@@ -121,11 +123,7 @@ class CodebaseIndexer:
 
         # Create progress bar if requested
         if show_progress:
-            progress = tqdm(
-                total=len(files),
-                desc="Indexing files",
-                unit="file"
-            )
+            progress = tqdm(total=len(files), desc="Indexing files", unit="file")
         else:
             progress = None
 
@@ -146,7 +144,7 @@ class CodebaseIndexer:
         if progress:
             progress.close()
 
-    def _process_batch(self, batch_files: List[Path]):
+    def _process_batch(self, batch_files: list[Path]):
         """Process a batch of files.
 
         Args:
@@ -155,14 +153,15 @@ class CodebaseIndexer:
         # Step 1: Read files and create chunks
         chunks = []
         for file_path in batch_files:
-            chunk = self.file_chunker.chunk_file(file_path, self.codebase_root)
+            file_chunks = self.file_chunker.chunk_file(file_path, self.codebase_root)
 
-            if chunk is None:
+            if not file_chunks:  # Empty list means file was skipped
                 self.stats["files_skipped"] += 1
                 logger.debug(f"Skipped: {file_path}")
                 continue
 
-            chunks.append(chunk)
+            # Add all chunks from this file
+            chunks.extend(file_chunks)
             self.stats["files_processed"] += 1
 
         if not chunks:
@@ -171,6 +170,12 @@ class CodebaseIndexer:
 
         # Step 2: Generate embeddings for batch
         try:
+            # Log which files are in this batch
+            batch_files = list(set(chunk["file_path"] for chunk in chunks))
+            logger.debug(
+                f"Processing batch of {len(chunks)} chunks from {len(batch_files)} files: {[str(f) for f in batch_files]}"
+            )
+
             # Add prefix if configured (required for nomic-embed-text, not needed for mxbai-embed-large)
             if settings.use_embedding_prefixes:
                 texts = [f"search_document: {chunk['content']}" for chunk in chunks]
@@ -205,7 +210,7 @@ class CodebaseIndexer:
 def index_codebase(
     codebase_path: str,
     name: str,
-    additional_exclude: Optional[List[str]] = None,
+    additional_exclude: Optional[list[str]] = None,
     max_file_size: Optional[int] = None,
     batch_size: Optional[int] = None,
     show_progress: bool = True,

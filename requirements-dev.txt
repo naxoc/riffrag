@@ -1,0 +1,8 @@
+# Development dependencies
+# Install with: pip install -r requirements-dev.txt
+
+# First install base requirements
+-r requirements.txt
+
+# Linting and formatting
+ruff>=0.1.0                # Fast Python linter and formatter

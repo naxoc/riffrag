@@ -2,9 +2,7 @@
 
 import logging
 import time
-from typing import List, Union
 
-import ollama
 from ollama import Client
 
 from config.settings import settings
@@ -31,10 +29,13 @@ class OllamaEmbedder:
 
         self.client = Client(host=self.host)
 
-        # Auto-detect dimension from model if not explicitly set in env
+        # Auto-detect dimension and context length from model
         self.dimension = self._detect_dimension()
+        self.context_length = self._detect_context_length()
 
-        logger.info(f"Initialized OllamaEmbedder with model={self.model}, dimension={self.dimension}, host={self.host}")
+        logger.info(
+            f"Initialized OllamaEmbedder with model={self.model}, dimension={self.dimension}, context_length={self.context_length}, host={self.host}"
+        )
 
         # Verify model is available
         self._verify_model()
@@ -47,27 +48,61 @@ class OllamaEmbedder:
 
         Falls back to settings.embedding_dimension if detection fails.
         """
-        # If explicitly set in env, use that (allows override)
-        if hasattr(settings, '_env_file_loaded') or 'EMBEDDING_DIMENSION' in __import__('os').environ:
-            return settings.embedding_dimension
+        import os
 
+        # If explicitly set in env, use that (allows manual override)
+        if "EMBEDDING_DIMENSION" in os.environ:
+            dim = settings.embedding_dimension
+            logger.info(f"Using manually configured dimension: {dim}")
+            return dim
+
+        # Try to auto-detect from Ollama
         try:
             response = self.client.show(self.model)
-            model_info = response.get('modelinfo', {})
+            model_info = response.get("modelinfo", {})
 
             # Search for any key ending in '.embedding_length'
             # This works for any model architecture without hardcoding
             for key, value in model_info.items():
-                if key.endswith('.embedding_length'):
+                if key.endswith(".embedding_length"):
                     logger.info(f"Auto-detected embedding dimension from '{key}': {value}")
                     return value
 
-            logger.warning(f"Could not find embedding dimension in model info, using default: {settings.embedding_dimension}")
+            logger.warning(
+                f"Could not find embedding dimension in model info, using default: {settings.embedding_dimension}"
+            )
             return settings.embedding_dimension
 
         except Exception as e:
-            logger.warning(f"Failed to auto-detect dimension: {e}, using default: {settings.embedding_dimension}")
+            logger.warning(
+                f"Failed to auto-detect dimension: {e}, using default: {settings.embedding_dimension}"
+            )
             return settings.embedding_dimension
+
+    def _detect_context_length(self) -> int:
+        """Auto-detect context length from the model.
+
+        Returns:
+            Context length (max tokens)
+
+        Falls back to 512 if detection fails.
+        """
+        try:
+            response = self.client.show(self.model)
+            model_info = response.get("modelinfo", {})
+
+            # Search for any key ending in '.context_length'
+            for key, value in model_info.items():
+                if key.endswith(".context_length"):
+                    logger.info(f"Auto-detected context length from '{key}': {value}")
+                    return value
+
+            logger.warning("Could not find context length in model info, using default: 512")
+            return 512
+
+        except Exception as e:
+            logger.warning(f"Failed to auto-detect context length: {e}, using default: 512")
+            return 512
 
     def _verify_model(self) -> None:
         """Verify that the embedding model is available."""
@@ -75,7 +110,7 @@ class OllamaEmbedder:
             response = self.client.list()
 
             # Handle response - it might be a dict or an object
-            if hasattr(response, 'models'):
+            if hasattr(response, "models"):
                 models = response.models
             elif isinstance(response, dict):
                 models = response.get("models", [])
@@ -87,7 +122,7 @@ class OllamaEmbedder:
             # Extract model names
             available_models = []
             for m in models:
-                if hasattr(m, 'model'):
+                if hasattr(m, "model"):
                     available_models.append(m.model)
                 elif isinstance(m, dict):
                     available_models.append(m.get("name", m.get("model", "")))
@@ -102,7 +137,7 @@ class OllamaEmbedder:
             logger.warning(f"Could not verify Ollama model (this is OK if model exists): {e}")
             # Don't raise - model might still work
 
-    def embed(self, text: str, retry_count: int = 3) -> List[float]:
+    def embed(self, text: str, retry_count: int = 3) -> list[float]:
         """Generate embedding for a single text.
 
         Args:
@@ -121,11 +156,25 @@ class OllamaEmbedder:
 
         for attempt in range(retry_count):
             try:
-                response = self.client.embeddings(
-                    model=self.model,
-                    prompt=text
-                )
+                logger.debug(f"Embedding text: length={len(text)}, preview={text[:100]!r}...")
+
+                response = self.client.embeddings(model=self.model, prompt=text)
                 embedding = response["embedding"]
+
+                # Debug: Check for invalid values
+                logger.debug(
+                    f"Received embedding: dim={len(embedding)}, min={min(embedding):.4f}, max={max(embedding):.4f}"
+                )
+
+                # Check for inf/nan values
+                import math
+
+                inf_count = sum(1 for v in embedding if math.isinf(v))
+                nan_count = sum(1 for v in embedding if math.isnan(v))
+                if inf_count > 0 or nan_count > 0:
+                    logger.error(
+                        f"Invalid embedding values: inf_count={inf_count}, nan_count={nan_count}"
+                    )
 
                 # Verify dimension
                 if len(embedding) != self.dimension:
@@ -139,18 +188,14 @@ class OllamaEmbedder:
                 logger.warning(f"Embedding attempt {attempt + 1}/{retry_count} failed: {e}")
 
                 if attempt < retry_count - 1:
-                    wait_time = 2 ** attempt  # Exponential backoff
+                    wait_time = 2**attempt  # Exponential backoff
                     logger.info(f"Retrying in {wait_time} seconds...")
                     time.sleep(wait_time)
                 else:
                     logger.error(f"Failed to generate embedding after {retry_count} attempts")
                     raise RuntimeError(f"Embedding generation failed: {e}") from e
 
-    def embed_batch(
-        self,
-        texts: List[str],
-        show_progress: bool = False
-    ) -> List[List[float]]:
+    def embed_batch(self, texts: list[str], show_progress: bool = False) -> list[list[float]]:
         """Generate embeddings for multiple texts.
 
         Args:
@@ -170,6 +215,7 @@ class OllamaEmbedder:
         if show_progress:
             try:
                 from tqdm import tqdm
+
                 iterator = tqdm(texts, desc="Generating embeddings")
             except ImportError:
                 pass
@@ -189,11 +235,7 @@ class OllamaEmbedder:
 
         return embeddings
 
-    def embed_with_metadata(
-        self,
-        items: List[dict],
-        text_key: str = "content"
-    ) -> List[dict]:
+    def embed_with_metadata(self, items: list[dict], text_key: str = "content") -> list[dict]:
         """Generate embeddings for items with metadata.
 
         Args:

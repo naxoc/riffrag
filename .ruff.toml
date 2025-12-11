@@ -1,0 +1,26 @@
+# Ruff configuration for RiffRag
+# See: https://docs.astral.sh/ruff/
+
+line-length = 100
+target-version = "py39"
+
+[lint]
+# Enable these rule categories:
+# E/W - pycodestyle errors and warnings
+# F - Pyflakes
+# I - isort (import sorting)
+# N - pep8-naming
+# UP - pyupgrade (modernize Python code)
+select = ["E", "F", "W", "I", "N", "UP"]
+
+# Ignore these specific rules:
+ignore = [
+    "E501",  # Line too long (handled by formatter)
+]
+
+[format]
+# Use double quotes for strings
+quote-style = "double"
+
+# Use spaces for indentation
+indent-style = "space"

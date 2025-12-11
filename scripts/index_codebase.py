@@ -19,9 +19,7 @@ from src.indexing.indexer import index_codebase
 
 # Setup logging
 logging.basicConfig(
-    level=settings.log_level,
-    format="%(message)s",
-    handlers=[RichHandler(rich_tracebacks=True)]
+    level=settings.log_level, format="%(message)s", handlers=[RichHandler(rich_tracebacks=True)]
 )
 logger = logging.getLogger(__name__)
 
@@ -77,16 +75,24 @@ def main(
             --name my-project \\
             --exclude "*.log,*.tmp"
     """
-    console.print(Panel.fit(
-        f"[bold cyan]Indexing Codebase[/bold cyan]\n\n"
-        f"[yellow]Path:[/yellow] {path}\n"
-        f"[yellow]Name:[/yellow] {name}\n"
-        f"[yellow]Database:[/yellow] {settings.database_dir / (name + '_rag')}\n"
-        f"[yellow]Model:[/yellow] {settings.embedding_model}\n"
-        f"[yellow]Dimensions:[/yellow] {settings.embedding_dimension}\n"
-        f"[yellow]Batch size:[/yellow] {batch_size or settings.batch_size}",
-        border_style="cyan"
-    ))
+    # Get actual embedding dimension (auto-detected or manual)
+    from src.embeddings.ollama_embedder import OllamaEmbedder
+
+    temp_embedder = OllamaEmbedder()
+    actual_dimension = temp_embedder.dimension
+
+    console.print(
+        Panel.fit(
+            f"[bold cyan]Indexing Codebase[/bold cyan]\n\n"
+            f"[yellow]Path:[/yellow] {path}\n"
+            f"[yellow]Name:[/yellow] {name}\n"
+            f"[yellow]Database:[/yellow] {settings.database_dir / (name + '_rag')}\n"
+            f"[yellow]Model:[/yellow] {settings.embedding_model}\n"
+            f"[yellow]Dimensions:[/yellow] {actual_dimension}\n"
+            f"[yellow]Batch size:[/yellow] {batch_size or settings.batch_size}",
+            border_style="cyan",
+        )
+    )
 
     # Parse exclude patterns
     additional_exclude = None
@@ -110,22 +116,30 @@ def main(
         speed = stats["files_processed"] / duration if duration > 0 else 0
 
         console.print("\n")
-        console.print(Panel.fit(
-            f"[bold green]Indexing Complete![/bold green]\n\n"
-            f"[yellow]Total files found:[/yellow] {stats['total_files_found']}\n"
-            f"[yellow]Files processed:[/yellow] {stats['files_processed']}\n"
-            f"[yellow]Files skipped:[/yellow] {stats['files_skipped']}\n"
-            f"[yellow]Files failed:[/yellow] {stats['files_failed']}\n"
-            f"[yellow]Chunks created:[/yellow] {stats['chunks_created']}\n"
-            f"[yellow]Duration:[/yellow] {duration:.2f} seconds\n"
-            f"[yellow]Speed:[/yellow] {speed:.2f} files/sec",
-            border_style="green"
-        ))
+        console.print(
+            Panel.fit(
+                f"[bold green]Indexing Complete![/bold green]\n\n"
+                f"[yellow]Total files found:[/yellow] {stats['total_files_found']}\n"
+                f"[yellow]Files processed:[/yellow] {stats['files_processed']}\n"
+                f"[yellow]Files skipped:[/yellow] {stats['files_skipped']}\n"
+                f"[yellow]Files failed:[/yellow] {stats['files_failed']}\n"
+                f"[yellow]Chunks created:[/yellow] {stats['chunks_created']}\n"
+                f"[yellow]Duration:[/yellow] {duration:.2f} seconds\n"
+                f"[yellow]Speed:[/yellow] {speed:.2f} files/sec",
+                border_style="green",
+            )
+        )
 
-        console.print(f"\n[green]✓[/green] Database saved to: {settings.database_dir / (name + '_rag')}")
-        console.print(f"\n[cyan]Next steps:[/cyan]")
-        console.print(f"  1. Query the RAG: [bold]python3 scripts/query_rag.py --database {name} --query \"your question\"[/bold]")
-        console.print(f"  2. Generate skill: [bold]python3 -m skills.skill_generator create --database {name}[/bold]")
+        console.print(
+            f"\n[green]✓[/green] Database saved to: {settings.database_dir / (name + '_rag')}"
+        )
+        console.print("\n[cyan]Next steps:[/cyan]")
+        console.print(
+            f'  1. Query the RAG: [bold]python3 scripts/query_rag.py --database {name} --query "your question"[/bold]'
+        )
+        console.print(
+            f"  2. Generate skill: [bold]python3 -m skills.skill_generator create --database {name}[/bold]"
+        )
 
     except KeyboardInterrupt:
         console.print("\n[yellow]Indexing interrupted by user[/yellow]")

@@ -1,7 +1,7 @@
 """Query engine for searching RAG databases."""
 
 import logging
-from typing import Dict, List, Optional
+from typing import Optional
 
 from config.settings import settings
 from src.embeddings.ollama_embedder import OllamaEmbedder
@@ -42,8 +42,8 @@ class QueryEngine:
         limit: int = None,
         min_similarity: Optional[float] = None,
         extension_filter: Optional[str] = None,
-        format_style: str = "plain",
-    ) -> List[Dict]:
+        format_style: str = "human",
+    ) -> list[dict]:
         """Query the RAG database.
 
         Args:
@@ -51,7 +51,7 @@ class QueryEngine:
             limit: Maximum number of results (default from settings)
             min_similarity: Minimum similarity threshold (0-1)
             extension_filter: Filter by file extension (e.g., '.py')
-            format_style: Output format ('plain' or 'claude')
+            format_style: Output format ('human' or 'machine')
 
         Returns:
             List of matching results
@@ -61,7 +61,9 @@ class QueryEngine:
             return []
 
         limit = limit if limit is not None else settings.default_search_limit
-        min_similarity = min_similarity if min_similarity is not None else settings.similarity_threshold
+        min_similarity = (
+            min_similarity if min_similarity is not None else settings.similarity_threshold
+        )
 
         logger.info(f"Querying: '{query_text}' (limit={limit})")
 
@@ -96,25 +98,25 @@ class QueryEngine:
             raise
 
         # Step 4: Filter by similarity threshold
-        filtered_results = [
-            r for r in results if r["similarity"] >= min_similarity
-        ]
+        filtered_results = [r for r in results if r["similarity"] >= min_similarity]
 
-        logger.info(f"Found {len(filtered_results)} results above similarity threshold {min_similarity}")
+        logger.info(
+            f"Found {len(filtered_results)} results above similarity threshold {min_similarity}"
+        )
 
         return filtered_results
 
     def format_results(
         self,
-        results: List[Dict],
-        style: str = "plain",
+        results: list[dict],
+        style: str = "human",
         max_content_length: Optional[int] = None,
     ) -> str:
         """Format query results for display.
 
         Args:
             results: List of result dictionaries
-            style: Format style ('plain' or 'claude')
+            style: Format style ('human' or 'machine')
             max_content_length: Maximum content length to display
 
         Returns:
@@ -123,13 +125,13 @@ class QueryEngine:
         if not results:
             return "No results found."
 
-        if style == "claude":
-            return self._format_for_claude(results, max_content_length)
+        if style == "machine":
+            return self._format_for_machine(results, max_content_length)
         else:
-            return self._format_plain(results, max_content_length)
+            return self._format_human(results, max_content_length)
 
-    def _format_plain(self, results: List[Dict], max_length: Optional[int]) -> str:
-        """Format results in plain style.
+    def _format_human(self, results: list[dict], max_length: Optional[int]) -> str:
+        """Format results in human-readable style.
 
         Args:
             results: List of result dictionaries
@@ -143,16 +145,44 @@ class QueryEngine:
 
         # First, list all files with metadata
         for idx, result in enumerate(results, 1):
-            output.append(f"{idx}. {result['file_path']}")
-            output.append(f"   Similarity: {result['similarity']:.3f} | Size: {result['size_bytes']} bytes")
+            # Show file path with line numbers if chunked
+            total_chunks = result.get("total_chunks") or 1
+            start_line = result.get("start_line") or 1
+            end_line = result.get("end_line") or 1
+            chunk_index = result.get("chunk_index") or 0
+
+            if total_chunks > 1:
+                file_display = f"{result['file_path']} (lines {start_line}-{end_line}, chunk {chunk_index + 1}/{total_chunks})"
+            elif start_line and end_line:
+                file_display = f"{result['file_path']} (lines {start_line}-{end_line})"
+            else:
+                file_display = result["file_path"]
+
+            output.append(f"{idx}. {file_display}")
+            output.append(
+                f"   Similarity: {result['similarity']:.3f} | Size: {result['size_bytes']} bytes"
+            )
 
         output.append("\n" + "=" * 60 + "\n")
 
         # Then show full content for each file
         for idx, result in enumerate(results, 1):
-            output.append(f"## {idx}. {result['file_path']}\n")
+            # Show file path with line numbers
+            total_chunks = result.get("total_chunks") or 1
+            start_line = result.get("start_line") or 1
+            end_line = result.get("end_line") or 1
+            chunk_index = result.get("chunk_index") or 0
 
-            content = result['content']
+            if total_chunks > 1:
+                header = f"## {idx}. {result['file_path']} (lines {start_line}-{end_line}, chunk {chunk_index + 1}/{total_chunks})\n"
+            elif start_line and end_line:
+                header = f"## {idx}. {result['file_path']} (lines {start_line}-{end_line})\n"
+            else:
+                header = f"## {idx}. {result['file_path']}\n"
+
+            output.append(header)
+
+            content = result["content"]
             if max_length and len(content) > max_length:
                 content = content[:max_length] + "\n... (truncated)"
 
@@ -161,8 +191,8 @@ class QueryEngine:
 
         return "\n".join(output)
 
-    def _format_for_claude(self, results: List[Dict], max_length: Optional[int]) -> str:
-        """Format results optimized for Claude Code.
+    def _format_for_machine(self, results: list[dict], max_length: Optional[int]) -> str:
+        """Format results optimized for machine consumption.
 
         Args:
             results: List of result dictionaries
@@ -175,11 +205,26 @@ class QueryEngine:
         output.append(f"Found {len(results)} relevant files:\n")
 
         for idx, result in enumerate(results, 1):
-            output.append(f"\n## {idx}. {result['file_path']}")
-            output.append(f"**Relevance:** {result['similarity']:.2%} | **Type:** {result['extension']}")
+            # Show file path with line numbers
+            total_chunks = result.get("total_chunks") or 1
+            start_line = result.get("start_line") or 1
+            end_line = result.get("end_line") or 1
+            chunk_index = result.get("chunk_index") or 0
+
+            if total_chunks > 1:
+                header = f"\n## {idx}. {result['file_path']} (lines {start_line}-{end_line}, chunk {chunk_index + 1}/{total_chunks})"
+            elif start_line and end_line:
+                header = f"\n## {idx}. {result['file_path']} (lines {start_line}-{end_line})"
+            else:
+                header = f"\n## {idx}. {result['file_path']}"
+
+            output.append(header)
+            output.append(
+                f"**Relevance:** {result['similarity']:.2%} | **Type:** {result['extension']}"
+            )
             output.append("\n```")
 
-            content = result['content']
+            content = result["content"]
             if max_length and len(content) > max_length:
                 content = content[:max_length] + "\n... (truncated)"
 
@@ -193,7 +238,7 @@ def query_database(
     database_name: str,
     query_text: str,
     limit: int = None,
-    format_style: str = "plain",
+    format_style: str = "human",
 ) -> str:
     """Query a RAG database (convenience function).
 
