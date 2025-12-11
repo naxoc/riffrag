@@ -28,13 +28,46 @@ class OllamaEmbedder:
         """
         self.host = host or settings.ollama_host
         self.model = model or settings.embedding_model
-        self.dimension = settings.embedding_dimension
 
         self.client = Client(host=self.host)
-        logger.info(f"Initialized OllamaEmbedder with model={self.model}, host={self.host}")
+
+        # Auto-detect dimension from model if not explicitly set in env
+        self.dimension = self._detect_dimension()
+
+        logger.info(f"Initialized OllamaEmbedder with model={self.model}, dimension={self.dimension}, host={self.host}")
 
         # Verify model is available
         self._verify_model()
+
+    def _detect_dimension(self) -> int:
+        """Auto-detect embedding dimension from the model.
+
+        Returns:
+            Embedding dimension size
+
+        Falls back to settings.embedding_dimension if detection fails.
+        """
+        # If explicitly set in env, use that (allows override)
+        if hasattr(settings, '_env_file_loaded') or 'EMBEDDING_DIMENSION' in __import__('os').environ:
+            return settings.embedding_dimension
+
+        try:
+            response = self.client.show(self.model)
+            model_info = response.get('modelinfo', {})
+
+            # Search for any key ending in '.embedding_length'
+            # This works for any model architecture without hardcoding
+            for key, value in model_info.items():
+                if key.endswith('.embedding_length'):
+                    logger.info(f"Auto-detected embedding dimension from '{key}': {value}")
+                    return value
+
+            logger.warning(f"Could not find embedding dimension in model info, using default: {settings.embedding_dimension}")
+            return settings.embedding_dimension
+
+        except Exception as e:
+            logger.warning(f"Failed to auto-detect dimension: {e}, using default: {settings.embedding_dimension}")
+            return settings.embedding_dimension
 
     def _verify_model(self) -> None:
         """Verify that the embedding model is available."""

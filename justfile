@@ -26,7 +26,7 @@ index PATH NAME *ARGS:
 # This is the recommended way to refresh a database after code changes
 update NAME PATH *ARGS:
     @echo "Deleting existing database: {{NAME}}"
-    rm -rf data/databases/{{NAME}}_rag
+    rm -rf data/databases/{{NAME}}_rag.lance
     @echo "Re-indexing from scratch..."
     ./venv/bin/python3 scripts/index_codebase.py --path "{{PATH}}" --name "{{NAME}}" {{ARGS}}
 
@@ -67,15 +67,25 @@ list:
 # Usage: just delete my-project
 delete NAME:
     @echo "Deleting database: {{NAME}}"
-    rm -rf data/databases/{{NAME}}_rag
+    rm -rf data/databases/{{NAME}}_rag.lance
     @echo "✓ Database deleted"
 
 # Clean all RAG databases (careful!)
-# Deletes all *_rag directories in data/databases/
+# Deletes all *_rag.lance directories in data/databases/
+# Prompts for confirmation before deleting
 clean:
-    @echo "Deleting all databases..."
-    rm -rf data/databases/*_rag
-    @echo "✓ All databases deleted"
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "⚠️  This will DELETE ALL RAG databases!"
+    echo ""
+    if gum confirm "Are you sure you want to delete all databases?"; then
+        echo "Deleting all databases..."
+        rm -rf data/databases/*_rag.lance
+        echo "✓ All databases deleted"
+    else
+        echo "Cancelled"
+        exit 1
+    fi
 
 # Run a quick test (index this RAG project and query it)
 # Useful for verifying the system is working

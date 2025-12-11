@@ -48,7 +48,12 @@ class Settings(BaseSettings):
 
     embedding_dimension: int = Field(
         default=1024,
-        description="Embedding vector dimension (mxbai-embed-large = 1024)"
+        description="Embedding vector dimension (nomic-embed-text = 768, mxbai-embed-large = 1024)"
+    )
+
+    use_embedding_prefixes: bool = Field(
+        default=False,
+        description="Use search_query/search_document prefixes (required for nomic-embed-text, disable for mxbai-embed-large)"
     )
 
     # Indexing settings
@@ -71,6 +76,7 @@ class Settings(BaseSettings):
             "node_modules",
             "*.log",
             "*.tmp",
+            "*.lock",
             ".env",
             ".env.*",
             "venv",
@@ -92,7 +98,7 @@ class Settings(BaseSettings):
 
     # Querying settings
     default_search_limit: int = Field(
-        default=5,
+        default=3,
         description="Default number of search results to return"
     )
 

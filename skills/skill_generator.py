@@ -77,7 +77,7 @@ Results include the most relevant files with similarity scores.
 ```bash
 #!/usr/bin/env bash
 cd {project_root}
-just query {database_name} "$*" --limit 5 --format claude
+just query {database_name} "$*" --limit 3 --format claude
 ```
 '''
 

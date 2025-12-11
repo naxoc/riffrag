@@ -81,7 +81,10 @@ def main(
         f"[bold cyan]Indexing Codebase[/bold cyan]\n\n"
         f"[yellow]Path:[/yellow] {path}\n"
         f"[yellow]Name:[/yellow] {name}\n"
-        f"[yellow]Database:[/yellow] {settings.database_dir / (name + '_rag')}",
+        f"[yellow]Database:[/yellow] {settings.database_dir / (name + '_rag')}\n"
+        f"[yellow]Model:[/yellow] {settings.embedding_model}\n"
+        f"[yellow]Dimensions:[/yellow] {settings.embedding_dimension}\n"
+        f"[yellow]Batch size:[/yellow] {batch_size or settings.batch_size}",
         border_style="cyan"
     ))
 

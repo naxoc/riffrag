@@ -171,7 +171,11 @@ class CodebaseIndexer:
 
         # Step 2: Generate embeddings for batch
         try:
-            texts = [chunk["content"] for chunk in chunks]
+            # Add prefix if configured (required for nomic-embed-text, not needed for mxbai-embed-large)
+            if settings.use_embedding_prefixes:
+                texts = [f"search_document: {chunk['content']}" for chunk in chunks]
+            else:
+                texts = [chunk["content"] for chunk in chunks]
             embeddings = self.embedder.embed_batch(texts, show_progress=False)
 
             # Add embeddings to chunks

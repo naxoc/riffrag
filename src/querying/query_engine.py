@@ -66,8 +66,14 @@ class QueryEngine:
         logger.info(f"Querying: '{query_text}' (limit={limit})")
 
         # Step 1: Generate query embedding
+        # Add prefix if configured (required for nomic-embed-text, not needed for mxbai-embed-large)
+        if settings.use_embedding_prefixes:
+            query_to_embed = f"search_query: {query_text}"
+        else:
+            query_to_embed = query_text
+
         try:
-            query_embedding = self.embedder.embed(query_text)
+            query_embedding = self.embedder.embed(query_to_embed)
         except Exception as e:
             logger.error(f"Failed to generate query embedding: {e}")
             raise
@@ -135,18 +141,23 @@ class QueryEngine:
         output = []
         output.append(f"Found {len(results)} relevant files:\n")
 
+        # First, list all files with metadata
         for idx, result in enumerate(results, 1):
             output.append(f"{idx}. {result['file_path']}")
-            output.append(f"   Similarity: {result['similarity']:.3f}")
-            output.append(f"   Extension: {result['extension']}")
-            output.append(f"   Size: {result['size_bytes']} bytes")
+            output.append(f"   Similarity: {result['similarity']:.3f} | Size: {result['size_bytes']} bytes")
+
+        output.append("\n" + "=" * 60 + "\n")
+
+        # Then show full content for each file
+        for idx, result in enumerate(results, 1):
+            output.append(f"## {idx}. {result['file_path']}\n")
 
             content = result['content']
             if max_length and len(content) > max_length:
                 content = content[:max_length] + "\n... (truncated)"
 
-            output.append(f"\n{content}\n")
-            output.append("-" * 60)
+            output.append(content)
+            output.append("\n" + "-" * 60 + "\n")
 
         return "\n".join(output)
 
