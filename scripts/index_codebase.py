@@ -135,10 +135,10 @@ def main(
         )
         console.print("\n[cyan]Next steps:[/cyan]")
         console.print(
-            f'  1. Query the RAG: [bold]python3 scripts/query_rag.py --database {name} --query "your question"[/bold]'
+            f'  1. Query the RAG: [bold]just query {name} "your question"[/bold]'
         )
         console.print(
-            f"  2. Generate skill: [bold]python3 -m skills.skill_generator create --database {name}[/bold]"
+            f"  2. Generate skill: [bold]just skill {name}[/bold]"
         )
 
     except KeyboardInterrupt:

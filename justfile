@@ -42,13 +42,15 @@ skill NAME:
     echo "Creating Claude Code skill for database: {{NAME}}"
     echo ""
     SKILL_NAME=$(gum input --placeholder "Skill name" --value "{{NAME}}-rag" --prompt "Skill name: ")
-    DESCRIPTION=$(gum input --placeholder "Description of this RAG" --value "Query the {{NAME}} codebase" --prompt "Description: " --width 100)
+    CODEBASE_NAME=$(gum input --placeholder "Codebase name(s), comma-separated" --value "{{NAME}}" --prompt "Codebase (e.g. plugin) name(s). Comma separate if you have nicknames for the codebase: ")
+    DESCRIPTION=$(gum input --placeholder "Description of the codebase." --value "" --prompt "Description of the codebase. Help out Claude with a few words (but not too many): " --width 100)
     echo ""
     echo "Creating skill '$SKILL_NAME'..."
     ./venv/bin/python3 -m skills.skill_generator \
         --database "{{NAME}}" \
         --skill-name "$SKILL_NAME" \
-        --description "$DESCRIPTION"
+        --description "$DESCRIPTION" \
+        --codebase-names "$CODEBASE_NAME"
 
 # List all databases with stats (file counts and extensions)
 [group('RAG management')]

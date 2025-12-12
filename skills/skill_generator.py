@@ -24,6 +24,7 @@ def generate_skill(
     database_name: str,
     skill_name: Optional[str] = None,
     description: Optional[str] = None,
+    codebase_name: Optional[str] = None,
     output_dir: Optional[Path] = None,
 ) -> Path:
     """Generate a Claude Code skill for a RAG database.
@@ -32,6 +33,7 @@ def generate_skill(
         database_name: Name of the RAG database
         skill_name: Name for the skill (default: {database_name}-rag)
         description: Skill description
+        codebase_name: Codebase name(s) for the skill (default: database_name)
         output_dir: Output directory (default: ~/.claude/skills)
 
     Returns:
@@ -39,6 +41,7 @@ def generate_skill(
     """
     # Set defaults
     skill_name = skill_name or f"{database_name}-rag"
+    codebase_name = codebase_name or database_name
     description = description or f"Query the {database_name} codebase using RAG"
     output_dir = output_dir or settings.skill_output_dir
 
@@ -54,26 +57,21 @@ def generate_skill(
 
     skill_content = f"""---
 name: {skill_name}
-description: {description}
+description: Free locally-hosted RAG for {codebase_name}. Use for finding code, patterns, and documentation. Prefer this over the Explore agent for questions about this codebase.
 ---
 
-Query the {database_name} codebase to find relevant code and documentation.
+{description}
 
-**Usage:**
-- Ask natural language questions about the codebase
-- Find specific implementations or patterns
-- Get context about how features work
+**When to use:**
+- Finding code patterns or implementations
+- Locating specific functions, classes, or features
+- Understanding how something works
+- **Prefer this over Explore agent** - it's free and faster
 
-**Examples:**
-- "How does logging work?"
-- "Where are error handlers defined?"
-- "Find configuration files"
-
-**Note:** This skill uses RAG (Retrieval-Augmented Generation) to search {database_name}.
-Results include relevant code chunks with line numbers and similarity scores.
+**How it works:**
+Semantic search of the codebase returns relevant code chunks with line numbers and similarity scores. If results are unclear, escalate to targeted Grep/Glob searches or the Explore agent.
 
 ---
-
 ```bash
 #!/usr/bin/env bash
 cd {project_root}
@@ -107,6 +105,11 @@ def create(
         None,
         "--description",
         help="Skill description",
+    ),
+    codebase_name: Optional[str] = typer.Option(
+        None,
+        "--codebase-names",
+        help="Codebase name(s) for the skill (default: database name)",
     ),
     list_databases: bool = typer.Option(
         False,
@@ -158,6 +161,7 @@ def create(
             database_name=database,
             skill_name=skill_name,
             description=description,
+            codebase_name=codebase_name,
         )
 
         console.print(f"\n[green]✓[/green] Skill created at: [bold]{skill_dir}[/bold]")
