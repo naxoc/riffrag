@@ -1,8 +1,8 @@
 # RiffRag: A local RAG builder with a Claude Code skills creator
 
-A RAG system for indexing and querying  codebases using LanceDB and Ollama embeddings. Designed for integration with Claude Code skills to save tokens and provide better context when working with multiple codebases. Main focus is **WordPress and PHP/JavaScript** codebases. It's written in python, but you need not know any python at all (and likely do nothing in the way of setting up python on your Mac). Linux will probably work with some nudging.
+A RAG system for indexing and querying codebases using LanceDB and Ollama embeddings. Designed for integration with Claude Code skills to save tokens and provide better context when working with multiple codebases. Main focus is **WordPress and PHP/JavaScript** codebases.
 
-Installation (on a Mac that is) is super easy and you don't need to touch settings or code if you don't want to. Just clone, install requirements (homebrew packages 'just' and 'gum'), and you're good to go.
+**Installation is dead simple:** Just paste a few commands and you're done. No Python knowledge needed, no virtual environments to manage, no config files to edit. It just works.
 
 **RiffRag** helps you understand codebases by creating searchable vector embeddings locally, with tight Claude Code integration for token-efficient development.
 
@@ -10,14 +10,13 @@ Installation (on a Mac that is) is super easy and you don't need to touch settin
 
 RiffRag currently works best with **small-to-medium sized codebases** (up to ~500 files). It's optimized for:
 
-- ✅ Projects with well-organized file structures.
-- ✅ It might even be a bit faster than waiting for Claude Code to `read`, `glob`, `grep`, and `ls` its way through code.
+- ✅ It might even be a bit **faster** than waiting for Claude Code to `read`, `glob`, `grep`, and `ls` its way through code.
 - ✅ **Saving tokens** that Claude Code or other paid services would be gobbling up instead.
 - ✅ **Individual WordPress plugins or themes** (not all of WordPress Core)
 - ✅ **Drupal modules** or other CMS extensions
 - ✅ **PHP projects** (Laravel apps, custom projects, etc.)
 - ✅ **JavaScript/Node.js projects**
-- ✅ **Focused libraries and tools**
+- ✅ **Focused libraries and tools** 
 
 **Current Implementation:** RiffRag uses line-based chunking that splits files into manageable sections while preserving context. This works well for most projects and handles large files intelligently.
 
@@ -43,38 +42,56 @@ There are probably a million RAG tools out there, but I found that they all were
 
 ## Requirements
 
-- Python 3.9+ (I just used the vanilla version installed on macOS – I did nothing to set that up)
-- [Ollama](https://ollama.ai/) installed and running: `brew install ollama` or download from their site
-- Embedding model: `ollama pull mxbai-embed-large` (this is the only tested and working model)
-- [Gum](https://github.com/charmbracelet/gum) for a more glamorous CLI experience: `brew install gum`
-- [Just](https://github.com/casey/just) task runner. Like `make` but it doesn't suck: `brew install just`
+- **macOS** with Homebrew (Linux probably works with some tweaking)
+- **Python 3.9+** (already on your Mac - you don't need to do anything)
+- That's it! Everything else installs automatically (see Installation below)
 
 ## Installation
 
-1. Clone this repository:
+### Do you have Homebrew installed?
+
+If not, get it here: [brew.sh](https://brew.sh) - it's a package manager for macOS that makes installing stuff easy.
+
+### One-command installation
+
+Once you have Homebrew, just paste these commands and you're done:
+
 ```bash
+# Install dependencies (just, gum, and ollama)
+brew install just gum ollama
+
+# Clone and setup RiffRag
 git clone https://github.com/naxoc/riffrag.git
 cd riffrag
+just setup
+
+# Pull the embedding model
+ollama pull mxbai-embed-large
+
+# Verify everything is working
+just check
 ```
 
-2. Create a virtual environment:
+That's it! You're ready to go. You don't need to know Python, activate virtual environments, or anything like that. The `just` commands handle everything for you.
+
+### Quick Start Example
+
+Here's how to index your first codebase and create a Claude Code skill:
+
 ```bash
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Index a codebase (e.g., a WordPress plugin)
+just index ~/Sites/my-plugin my-plugin
+
+# Create a Claude Code skill for it
+just skill my-plugin
+
+# Query it directly (or just let Claude Code use it automatically)
+just query my-plugin "How does authentication work?"
 ```
 
-3. Install dependencies:
-```bash
-pip3 install -r requirements.txt
+Done! Now restart Claude Code and you can use `@my-plugin-rag` in your conversations.
 
-# Optional - for development (includes linting):
-pip3 install -r requirements-dev.txt
-```
-
-4. Verify Ollama is running:
-```bash
-ollama list  # Should show nomic-embed-text
-```
+Note that the indexer respects `.gitignore` so all that is ignored by git is ignored when indexing too. If you need to ignore more things, then pass for example `--exclude "*.doc,dist-dir/**"`  to exclude .doc files and everything a dir called dist-dir.
 
 ### Configuration (Optional)
 
@@ -93,10 +110,8 @@ Key settings you might want to change:
 See `.env.example` for all available options.
 
 ## Usage
-You can use `just` recipes for convenience or call the Python scripts directly if you are so inclined.
-### Using Just (Recommended)
 
-If you have [just](https://github.com/casey/just) installed (and you really should because it's so darn convenient), you can use these convenient recipes:
+All commands use `just` - it's simple and hides all the Python complexity. Just type `just` to see all available commands.
 
 #### Index a Codebase
 ```bash
@@ -107,7 +122,7 @@ just index /path/to/codebase my-project --exclude "*.log,*.tmp,somedir/*" --max-
 ```
 
 **Options:**
-- `--exclude`: Additional file patterns to exclude (comma-separated, e.g., "*.log,*.tmp,somedir/*,*.jpg")
+- `--exclude`: Additional file patterns to exclude (comma-separated, e.g., "*.log,*.tmp,somedir/*,*.jpg") Note that it respects `.gitignore` so all that is ignored by git is ignored when indexing too.
 - `--max-file-size`: Maximum file size in bytes (default: 1000000 = 1MB)
 - `--batch-size`: Number of files to embed at once (default: 10)
 
@@ -143,7 +158,8 @@ just skill my-project
 
 This will interactively prompt you (using `gum`) for:
 - **Skill name** (default: `my-project-rag`)
-- **Description** (default: "Query the my-project codebase")
+- **Codebase name(s)** - Human-friendly name(s) for the codebase (can use comma-separated nicknames like "newspack,plugin")
+- **Description** - Optional description to help Claude understand what the codebase is
 
 After creation, restart Claude Code if you have it running, and then use it in Claude Code:
 ```
@@ -161,63 +177,6 @@ just clean             # Delete all databases
 just stats my-project  # Show database statistics
 just check             # Verify Ollama is ready
 just test              # Quick test (index this project)
-```
-
----
-
-### Using Python Scripts Directly
-
-If you prefer not to use `just`, you can call the scripts directly:
-
-#### 1. Index a Codebase
-
-Index a codebase to create a searchable RAG database:
-
-```bash
-python3 scripts/index_codebase.py \
-  --path /path/to/your/codebase \
-  --name my-project \
-  --exclude "*.log,*.tmp,*.lock,*.jpg" \
-  --max-file-size 1000000
-```
-
-Options:
-- `--path`: Path to the codebase directory (required)
-- `--name`: Name for this RAG database (required)
-- `--exclude`: Additional file patterns to exclude (comma-separated)
-- `--max-file-size`: Maximum file size in bytes (default: 1MB)
-
-### 2. Query a RAG Database
-
-Search your indexed codebase with natural language:
-
-```bash
-python3 scripts/query_rag.py \
-  --database my-project \
-  --query "How is authentication implemented?" \
-  --limit 5
-```
-
-Options:
-- `--database`: Name of the RAG database to query (required)
-- `--query`: Natural language query (required)
-- `--limit`: Number of results to return (default: 5)
-- `--format`: Output format: 'human' (colorful) or 'machine' (structured, default: 'human')
-
-### 3. Generate Claude Code Skill
-
-Create a Claude Code skill for your RAG:
-
-```bash
-python3 -m skills.skill_generator create \
-  --database my-project \
-  --skill-name my-project-rag \
-  --description "Query the my-project codebase"
-```
-
-Then use it in Claude Code:
-```
-@my-project-rag How does the authentication system work?
 ```
 
 ## Architecture
@@ -314,6 +273,36 @@ just fix       # Fix issues + format
 ```
 
 Configuration is in `.ruff.toml`.
+
+## Advanced: Using Python Scripts Directly
+
+If you can't use `just` for some reason, you can call the Python scripts directly:
+
+**Index a codebase:**
+```bash
+./venv/bin/python3 scripts/index_codebase.py \
+  --path /path/to/your/codebase \
+  --name my-project \
+  --exclude "*.log,*.tmp" \
+  --max-file-size 1000000
+```
+
+**Query a database:**
+```bash
+./venv/bin/python3 scripts/query_rag.py \
+  --database my-project \
+  --query "How is authentication implemented?" \
+  --limit 5
+```
+
+**Generate a skill:**
+```bash
+./venv/bin/python3 -m skills.skill_generator create \
+  --database my-project \
+  --skill-name my-project-rag \
+  --codebase-names "my-project,plugin" \
+  --description "Query the my-project codebase"
+```
 
 ## License
 
