@@ -191,11 +191,12 @@ class FileChunker:
         ext = file_path.suffix.lower()
         return self.CODE_EXTENSIONS.get(ext, "unknown")
 
-    def split_content_into_chunks(self, content: str) -> list[dict[str, any]]:
+    def split_content_into_chunks(self, content: str, file_name: str = None) -> list[dict[str, any]]:
         """Split content into multiple chunks based on max_chunk_tokens.
 
         Args:
             content: File content to split
+            file_name: Optional filename for logging
 
         Returns:
             List of dicts with 'content', 'start_line', 'end_line'
@@ -213,9 +214,9 @@ class FileChunker:
                 }
             ]
 
-        # Rough estimate: 1 token ≈ 4 characters
-        # Use 80% of limit to leave safety margin
-        max_chars = int(self.max_chunk_tokens * 4 * 0.8)
+        # Very conservative estimate for code: 1 token ≈ 1.5 characters
+        # Use 70% of limit to leave safety margin
+        max_chars = int(self.max_chunk_tokens * 1.5 * 0.7)
 
         # If content fits in one chunk, don't split
         if len(content) <= max_chars:
@@ -240,6 +241,64 @@ class FileChunker:
         for line_num, line in enumerate(lines, 1):
             line_with_newline = line + "\n"
             line_chars = len(line_with_newline)
+
+            # Handle extremely long lines by splitting them
+            if line_chars > max_chars:
+                file_info = f" in {file_name}" if file_name else ""
+                logger.info(
+                    f"Line {line_num}{file_info} is very long ({line_chars} chars), splitting into pieces"
+                )
+
+                # First, save any accumulated content
+                if current_chunk_lines:
+                    chunk_content = "".join(current_chunk_lines).strip()
+                    chunks.append(
+                        {
+                            "content": chunk_content,
+                            "start_line": chunk_start_line,
+                            "end_line": line_num - 1,
+                            "chunk_index": len(chunks),
+                            "total_chunks": -1,
+                        }
+                    )
+                    current_chunk_lines = []
+                    current_chunk_chars = 0
+
+                # Split the long line into max_chars pieces
+                remaining = line_with_newline
+                piece_count = 0
+                while remaining:
+                    # Take a chunk, try to break at a space if possible
+                    if len(remaining) <= max_chars:
+                        piece = remaining
+                        remaining = ""
+                    else:
+                        # Try to find a good break point (space, comma, etc.)
+                        piece = remaining[:max_chars]
+                        # Look for last space in the piece to break cleanly
+                        last_space = piece.rfind(" ")
+                        if last_space > max_chars * 0.5:  # Only if space is in latter half
+                            piece = remaining[:last_space + 1]
+                            remaining = remaining[last_space + 1:]
+                        else:
+                            # No good break point, just split at max_chars
+                            remaining = remaining[max_chars:]
+
+                    # Add this piece as its own chunk
+                    chunks.append(
+                        {
+                            "content": piece.strip(),
+                            "start_line": line_num,
+                            "end_line": line_num,
+                            "chunk_index": len(chunks),
+                            "total_chunks": -1,
+                        }
+                    )
+                    piece_count += 1
+
+                logger.debug(f"Split long line {line_num} into {piece_count} pieces")
+                chunk_start_line = line_num + 1
+                continue
 
             # If adding this line would exceed limit and we have content, save current chunk
             if current_chunk_chars + line_chars > max_chars and current_chunk_lines:
@@ -331,7 +390,7 @@ class FileChunker:
         language = self.get_language(file_path)
 
         # Split content into chunks (may be single chunk if small enough)
-        content_chunks = self.split_content_into_chunks(content)
+        content_chunks = self.split_content_into_chunks(content, file_name=file_path.name)
 
         # Build full chunks with file metadata
         chunks = []

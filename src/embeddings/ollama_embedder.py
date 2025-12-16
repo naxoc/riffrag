@@ -154,6 +154,18 @@ class OllamaEmbedder:
             logger.warning("Empty text provided for embedding, returning zero vector")
             return [0.0] * self.dimension
 
+        # Safety check: ensure text doesn't exceed context length
+        # Very conservative estimate: 1 token ≈ 1.5 characters for code
+        estimated_tokens = len(text) / 1.5
+        # Trigger at 80% of context length to be safe
+        if estimated_tokens > self.context_length * 0.8:
+            # Truncate to 70% of context length for extra safety
+            max_chars = int(self.context_length * 1.5 * 0.7)
+            logger.warning(
+                f"Text too long ({len(text)} chars, ~{estimated_tokens:.0f} est tokens) for context length {self.context_length}, truncating to {max_chars} chars"
+            )
+            text = text[:max_chars]
+
         for attempt in range(retry_count):
             try:
                 logger.debug(f"Embedding text: length={len(text)}, preview={text[:100]!r}...")
@@ -195,12 +207,13 @@ class OllamaEmbedder:
                     logger.error(f"Failed to generate embedding after {retry_count} attempts")
                     raise RuntimeError(f"Embedding generation failed: {e}") from e
 
-    def embed_batch(self, texts: list[str], show_progress: bool = False) -> list[list[float]]:
+    def embed_batch(self, texts: list[str], show_progress: bool = False, identifiers: list[str] = None) -> list[list[float]]:
         """Generate embeddings for multiple texts.
 
         Args:
             texts: List of texts to embed
             show_progress: Whether to show progress bar
+            identifiers: Optional list of identifiers (e.g., file paths) for error logging
 
         Returns:
             List of embedding vectors
@@ -225,7 +238,8 @@ class OllamaEmbedder:
                 embedding = self.embed(text)
                 embeddings.append(embedding)
             except RuntimeError as e:
-                logger.error(f"Failed to embed text at index {idx}: {e}")
+                identifier = f" ({identifiers[idx]})" if identifiers and idx < len(identifiers) else ""
+                logger.error(f"Failed to embed text at index {idx}{identifier}: {e}")
                 failed_indices.append(idx)
                 # Add zero vector as placeholder
                 embeddings.append([0.0] * self.dimension)

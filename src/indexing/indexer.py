@@ -181,7 +181,10 @@ class CodebaseIndexer:
                 texts = [f"search_document: {chunk['content']}" for chunk in chunks]
             else:
                 texts = [chunk["content"] for chunk in chunks]
-            embeddings = self.embedder.embed_batch(texts, show_progress=False)
+
+            # Extract file paths for error logging
+            identifiers = [chunk["file_path"] for chunk in chunks]
+            embeddings = self.embedder.embed_batch(texts, show_progress=False, identifiers=identifiers)
 
             # Add embeddings to chunks
             for chunk, embedding in zip(chunks, embeddings):
